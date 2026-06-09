@@ -1,13 +1,15 @@
 # kkkkkkkkkkkkkkkkkkk
 
-PROMPT 3 — O LEGADO DO SURREALISMO (30–45s)
+PROMPT 4 — A MENTE SEM LIMITES (45–60s)
 
 Prompt (em inglês):
 
-"Create a 15-second epic cinematic finale showing the influence of surrealism on modern society. Transition through films, fashion runways, advertisements, digital art and the internet becoming increasingly dreamlike. Giant eyes emerge among the clouds, floating doors drift through the sky, impossible architecture rises above oceans, and the camera ascends toward an infinite dreamscape. Philosophical and emotional mood, breathtaking visuals, smooth cinematic movement, dramatic lighting, ultra detailed, immersive storytelling, 4K."
+"Create a 15-second cinematic surreal documentary scene as a powerful conclusion to a film about Surrealism. A lone person walks through an endless gallery where paintings come to life and dissolve into dreamscapes. Staircases lead into the sky, books release flocks of birds made of ink, mirrors reveal alternate realities, and constellations connect to form human thoughts and imagination. The boundaries between dreams and reality completely disappear. The camera slowly moves upward through impossible architecture toward a universe filled with floating doors, luminous clouds, and infinite possibilities. Philosophical, emotional and inspiring atmosphere, realistic textures blended with fantasy, smooth cinematic camera movement, dramatic lighting, artistic masterpiece, ultra detailed, immersive storytelling, 4K."
 
 Narração:
-'O Surrealismo mudou o cinema, a moda, a publicidade e até a arte digital moderna. Ele ensinou o mundo a pensar além da lógica. O Surrealismo provou que a imaginação humana não possui limites.'
 
-Texto final:
-"SURREALISMO — ONDE OS SONHOS SE TORNAM REALIDADE."
+"O Surrealismo não foi apenas um movimento artístico. Ele abriu portas para novas formas de pensar, questionar e criar. Ao desafiar a lógica, mostrou que a imaginação é uma das maiores forças da humanidade."
+
+Texto final na tela:
+
+"Sonhar é o primeiro passo para transformar a realidade."
