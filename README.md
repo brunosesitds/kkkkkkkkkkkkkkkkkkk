@@ -1,11 +1,33 @@
-function calcular() {
-    
-    let numero = Number(document.getElementById("numero").value);
-    let resultado = document.getElementById("resultado");
+function login(){
+    var nome = $("#nome").val()
+    var senha = $("#senha").val()
 
-    resultado.innerHTML = "";
+    if(nome && senha && nome === "admin" && senha === "12345"){
+        const user = {
+            name: nome,
+            dataEntrada: new Date(),
+            id: Math.floor(Math.random() * 1000000)
+        }
+        localStorage.setItem("usuario", JSON.stringify(user))
+        window.location.href = "../loja"
 
-    for (let i = 1; i <= 10; i++) {
-        resultado.innerHTML += `${numero} x ${i} = ${numero * i}<br>`;
+    }else{
+        document.getElementById("errorModal").style.display = "flex"
+        document.getElementById("nome").style.borderBottom = "3px solid red"
+        document.getElementById("senha").style.borderBottom = "3px solid red"
+    }
+}
+
+
+function showPassword(){
+    var inputSenha = document.querySelector("#senha")
+    var img_eye = document.querySelector("#eye")
+
+    if(inputSenha.getAttribute("type") === "password"){
+        inputSenha.setAttribute("type", "text")
+        img_eye.setAttribute("src", "../../public/hide.png")
+    }else{
+        inputSenha.setAttribute("type", "password")
+        img_eye.setAttribute("src", "../../public/view.png")
     }
 }
