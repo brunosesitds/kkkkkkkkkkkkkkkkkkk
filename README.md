@@ -1,643 +1,274 @@
-import React, { useState, useMemo } from "react";
-import {
-  LayoutDashboard, Map as MapIcon, AlertTriangle, Truck, Warehouse,
-  TrendingUp, Sparkles, FileBarChart, Search, Bell, User, X,
-  ArrowUp, ArrowDown, CheckCircle2, PlayCircle, XCircle, ChevronRight,
-  Package, Gauge, Clock, ArrowRight, SlidersHorizontal, Radio, MapPin
-} from "lucide-react";
-import {
-  LineChart, Line, BarChart, Bar, AreaChart, Area, XAxis, YAxis,
-  CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine
-} from "recharts";
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Correios LogiSense</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+  :root{
+    --navy-900:#071B33; --navy-800:#0C2A4D; --navy-600:#16406F;
+    --azul:#1B5FAE; --azul-hover:#164C8C; --azul-claro:#4C8DD9;
+    --verde:#17924F; --verde-soft:#E7F5ED;
+    --amarelo:#C88A12; --amarelo-text:#B4790E; --amarelo-soft:#FBF1DD;
+    --vermelho:#C0342A; --vermelho-soft:#FBEAE8;
+    --bg:#F3F5F8; --line:#E7EBF1; --border:#E2E8F0;
+    --ink:#0F172A; --muted:#64748B; --muted-2:#94A3B8;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--ink);}
+  .mono{font-family:'IBM Plex Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums;}
+  button,select,input{font-family:inherit;}
+  button{cursor:pointer;border:none;background:none;}
+  a{text-decoration:none;color:inherit;}
 
-/* ============================= DESIGN TOKENS =============================
-   Base:      #F3F5F8 (frio, técnico)      Painel: #FFFFFF
-   Navy 900:  #071B33   Navy 800: #0C2A4D   Navy 600: #16406F
-   Azul médio (ação): #1B5FAE      Azul claro (dados): #4C8DD9
-   Verde: #17924F   Amarelo: #C88A12   Vermelho: #C0342A
-   Tipografia: "Inter" (UI) + "IBM Plex Mono" (dados/métricas, tabular)
-============================================================================ */
+  /* ---------- layout ---------- */
+  #app{display:flex;min-height:100vh;}
+  #sidebar{
+    width:250px;flex-shrink:0;min-height:100vh;position:sticky;top:0;
+    background:linear-gradient(180deg,#071B33 0%,#0C2A4D 100%);
+    color:#fff;display:flex;flex-direction:column;
+  }
+  .sb-header{padding:20px;border-bottom:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:10px;}
+  .sb-logo{width:36px;height:36px;border-radius:8px;background:var(--azul);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .sb-title{font-weight:800;font-size:15px;line-height:1.1;}
+  .sb-sub{font-size:13px;color:#8FB4E0;letter-spacing:.03em;}
+  .sb-nav{flex:1;padding:12px 8px;display:flex;flex-direction:column;gap:2px;overflow-y:auto;}
+  .sb-item{
+    display:flex;align-items:center;gap:11px;width:100%;padding:10px 12px;border-radius:8px;
+    font-size:13.5px;font-weight:500;color:#B8CCE3;transition:background .15s,color .15s;text-align:left;
+  }
+  .sb-item:hover{background:rgba(255,255,255,.06);color:#fff;}
+  .sb-item.active{background:var(--azul);color:#fff;}
+  .sb-item svg{flex-shrink:0;}
+  .sb-item .chev{margin-left:auto;opacity:.7;}
+  .sb-footer{padding:16px;border-top:1px solid rgba(255,255,255,.1);font-size:11px;color:#6E8BAE;line-height:1.5;}
 
-const FONT_STYLE = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
-  .font-ui { font-family: 'Inter', system-ui, sans-serif; }
-  .font-data { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
-`;
+  #main-col{flex:1;min-width:0;}
+  #topbar{
+    position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid #E2E8F0;
+    padding:12px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  }
+  .tb-brand{min-width:170px;}
+  .tb-eyebrow{font-size:11px;color:#94A3B8;text-transform:uppercase;letter-spacing:.05em;}
+  .tb-title{font-size:15px;font-weight:700;color:var(--navy-800);}
+  .tb-live{
+    display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
+    background:var(--verde-soft);color:var(--verde);font-size:12px;font-weight:700;
+  }
+  .pulse-dot{position:relative;width:8px;height:8px;}
+  .pulse-dot::before,.pulse-dot::after{content:'';position:absolute;inset:0;border-radius:999px;background:var(--verde);}
+  .pulse-dot::before{animation:ping 1.6s cubic-bezier(0,0,.2,1) infinite;opacity:.6;}
+  @keyframes ping{75%,100%{transform:scale(2.4);opacity:0;}}
+  .tb-search{flex:1;max-width:400px;position:relative;margin-left:8px;min-width:180px;}
+  .tb-search input{
+    width:100%;padding:9px 12px 9px 34px;border-radius:8px;background:#F1F5F9;border:1px solid transparent;
+    font-size:13.5px;color:#334155;outline:none;
+  }
+  .tb-search input:focus{background:#fff;border-color:rgba(27,95,174,.3);box-shadow:0 0 0 3px rgba(27,95,174,.12);}
+  .tb-search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#94A3B8;}
+  .tb-actions{margin-left:auto;display:flex;align-items:center;gap:12px;position:relative;}
+  .icon-btn{position:relative;width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#64748B;}
+  .icon-btn:hover{background:#F1F5F9;}
+  .dot-badge{position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:999px;background:var(--vermelho);}
+  .divider-v{width:1px;height:24px;background:#E2E8F0;}
+  .tb-profile{display:flex;align-items:center;gap:8px;}
+  .avatar{width:32px;height:32px;border-radius:999px;background:var(--azul);color:#fff;display:flex;align-items:center;justify-content:center;}
+  .profile-name{font-size:13px;font-weight:600;color:var(--navy-800);}
+  .profile-role{font-size:11px;color:#94A3B8;}
+  #notif-panel{
+    position:absolute;right:150px;top:46px;width:320px;background:#fff;border:1px solid #E2E8F0;border-radius:10px;
+    box-shadow:0 10px 30px rgba(15,23,42,.15);overflow:hidden;z-index:30;
+  }
+  .notif-header{padding:10px 16px;border-bottom:1px solid #F1F5F9;font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.04em;}
+  .notif-item{display:flex;gap:10px;text-align:left;width:100%;padding:12px 16px;border-bottom:1px solid #F8FAFC;}
+  .notif-item:hover{background:#F8FAFC;}
+  .notif-item .nd{width:8px;height:8px;border-radius:999px;margin-top:6px;flex-shrink:0;}
+  .notif-title{font-size:13px;font-weight:600;color:var(--navy-800);}
+  .notif-text{font-size:12px;color:#64748B;margin-top:2px;line-height:1.3;}
 
-/* ============================================================= MOCK DATA */
+  main{padding:24px;max-width:1400px;margin:0 auto;}
+  .section-gap{display:flex;flex-direction:column;gap:24px;}
 
-const CENTERS = [
-  { id: "CTB", name: "Curitiba", uf: "PR", regiao: "Sul", x: 53, y: 79, volume: 14200, capacidade: 15000, ocupacao: 94, risco: "Alto", previsao: "+18% amanhã", entradaHora: 1250, processHora: 980, fila: 2840, tempoMedio: "4h20", tipoGargalo: "Capacidade de triagem" },
-  { id: "SP", name: "São Paulo", uf: "SP", regiao: "Sudeste", x: 56, y: 72, volume: 38400, capacidade: 42000, ocupacao: 91, risco: "Alto", previsao: "+12% amanhã", entradaHora: 3620, processHora: 3140, fila: 6900, tempoMedio: "3h40", tipoGargalo: "Volume acima da capacidade" },
-  { id: "RJ", name: "Rio de Janeiro", uf: "RJ", regiao: "Sudeste", x: 62, y: 68, volume: 21400, capacidade: 30000, ocupacao: 71, risco: "Médio", previsao: "+5%", entradaHora: 1980, processHora: 1870, fila: 1100, tempoMedio: "2h55", tipoGargalo: "Rota crítica" },
-  { id: "BH", name: "Belo Horizonte", uf: "MG", regiao: "Sudeste", x: 60, y: 60, volume: 15800, capacidade: 24000, ocupacao: 66, risco: "Baixo", previsao: "+3%", entradaHora: 1420, processHora: 1390, fila: 420, tempoMedio: "2h10", tipoGargalo: "Veículo insuficiente" },
-  { id: "BSB", name: "Brasília", uf: "DF", regiao: "Centro-Oeste", x: 55, y: 50, volume: 7200, capacidade: 11800, ocupacao: 61, risco: "Baixo", previsao: "-2%", entradaHora: 690, processHora: 705, fila: 180, tempoMedio: "1h50", tipoGargalo: "Sem gargalo identificado" },
-  { id: "POA", name: "Porto Alegre", uf: "RS", regiao: "Sul", x: 50, y: 91, volume: 8900, capacidade: 12000, ocupacao: 76, risco: "Médio", previsao: "+4%", entradaHora: 810, processHora: 770, fila: 640, tempoMedio: "2h35", tipoGargalo: "Rota crítica" },
-  { id: "SSA", name: "Salvador", uf: "BA", regiao: "Nordeste", x: 72, y: 43, volume: 9600, capacidade: 16000, ocupacao: 60, risco: "Baixo", previsao: "+1%", entradaHora: 880, processHora: 900, fila: 210, tempoMedio: "1h55", tipoGargalo: "Sem gargalo identificado" },
-  { id: "REC", name: "Recife", uf: "PE", regiao: "Nordeste", x: 85, y: 29, volume: 7100, capacidade: 11000, ocupacao: 65, risco: "Baixo", previsao: "+2%", entradaHora: 640, processHora: 620, fila: 260, tempoMedio: "2h05", tipoGargalo: "Sem gargalo identificado" },
-  { id: "FOR", name: "Fortaleza", uf: "CE", regiao: "Nordeste", x: 77, y: 22, volume: 6800, capacidade: 10500, ocupacao: 65, risco: "Baixo", previsao: "+3%", entradaHora: 610, processHora: 598, fila: 240, tempoMedio: "2h00", tipoGargalo: "Sem gargalo identificado" },
-  { id: "MAO", name: "Manaus", uf: "AM", regiao: "Norte", x: 25, y: 16, volume: 4200, capacidade: 8000, ocupacao: 52, risco: "Baixo", previsao: "0%", entradaHora: 390, processHora: 402, fila: 90, tempoMedio: "1h40", tipoGargalo: "Sem gargalo identificado" },
-];
+  /* ---------- cards & primitives ---------- */
+  .card{background:#fff;border-radius:10px;border:1px solid #E2E8F0;box-shadow:0 1px 2px rgba(15,23,42,.04);}
+  .p-4{padding:16px;} .p-5{padding:20px;}
+  .section-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:16px;gap:12px;flex-wrap:wrap;}
+  .section-eyebrow{font-family:'IBM Plex Mono';font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--azul-claro);margin-bottom:3px;}
+  .section-title{font-size:17px;font-weight:700;color:var(--navy-800);}
 
-const ROUTES = [
-  ["CTB", "SP", 18400], ["SP", "RJ", 12000], ["SP", "BH", 9000], ["SP", "BSB", 7000],
-  ["BSB", "SSA", 5000], ["BSB", "REC", 4000], ["SSA", "REC", 3000], ["REC", "FOR", 2500],
-  ["BSB", "MAO", 2000], ["POA", "CTB", 9800], ["BH", "RJ", 5200],
-];
+  .badge{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border-radius:6px;font-size:12px;font-weight:700;}
+  .badge .bd{width:6px;height:6px;border-radius:999px;}
+  .badge-alto{background:var(--vermelho-soft);color:var(--vermelho);}
+  .badge-medio{background:var(--amarelo-soft);color:var(--amarelo-text);}
+  .badge-baixo{background:var(--verde-soft);color:var(--verde);}
+  .status-normal{background:var(--verde-soft);color:var(--verde);}
+  .status-atencao{background:var(--amarelo-soft);color:var(--amarelo-text);}
+  .status-critico{background:var(--vermelho-soft);color:var(--vermelho);}
 
-const VEHICLES_BASE = [
-  { id: "TR-2048", origem: "Curitiba", destino: "São Paulo", ocupacao: 96, saida: "14:30", chegada: "22:10", status: "Atenção" },
-  { id: "TR-3012", origem: "Curitiba", destino: "Porto Alegre", ocupacao: 78, saida: "15:00", chegada: "21:30", status: "Normal" },
-  { id: "TR-1822", origem: "São Paulo", destino: "Brasília", ocupacao: 98, saida: "16:20", chegada: "02:40", status: "Crítico" },
-  { id: "TR-4410", origem: "Rio de Janeiro", destino: "Belo Horizonte", ocupacao: 82, saida: "13:10", chegada: "18:45", status: "Normal" },
-  { id: "TR-5501", origem: "Salvador", destino: "Recife", ocupacao: 70, saida: "09:00", chegada: "15:20", status: "Normal" },
-  { id: "TR-6120", origem: "Brasília", destino: "Manaus", ocupacao: 91, saida: "11:40", chegada: "23:10", status: "Atenção" },
-  { id: "TR-2277", origem: "São Paulo", destino: "Curitiba", ocupacao: 64, saida: "08:15", chegada: "14:00", status: "Normal" },
-];
+  .delta{display:inline-flex;align-items:center;gap:2px;font-weight:700;font-size:12px;}
+  .delta-good{color:var(--verde);} .delta-bad{color:var(--vermelho);}
 
-const DEMANDA_30D = Array.from({ length: 30 }, (_, i) => {
-  const dia = i + 1;
-  const base = 88 + Math.sin(i / 3.4) * 2.6 + (i / 30) * 3.4;
-  return { dia: `${dia}/07`, prazo: Math.round(base * 10) / 10 };
-});
+  /* grids */
+  .grid{display:grid;gap:16px;}
+  .grid-6{grid-template-columns:repeat(6,1fr);}
+  .grid-5{grid-template-columns:repeat(5,1fr);}
+  .grid-4{grid-template-columns:repeat(4,1fr);}
+  .grid-3{grid-template-columns:repeat(3,1fr);}
+  .grid-2{grid-template-columns:repeat(2,1fr);}
+  @media(max-width:1100px){.grid-6{grid-template-columns:repeat(3,1fr);} .grid-5{grid-template-columns:repeat(3,1fr);} .grid-4{grid-template-columns:repeat(2,1fr);} .grid-3{grid-template-columns:repeat(2,1fr);}}
+  @media(max-width:640px){.grid-6,.grid-5,.grid-4,.grid-3,.grid-2{grid-template-columns:repeat(2,1fr);}}
 
-const CAPACIDADE_REDE = [
-  { categoria: "Rede Nacional", disponivel: 640000, utilizada: 552000, projetada: 618000 },
-];
+  .kpi{display:flex;flex-direction:column;gap:10px;}
+  .kpi-top{display:flex;align-items:center;justify-content:space-between;}
+  .kpi-label{font-size:12px;font-weight:600;color:#64748B;}
+  .kpi-bottom{display:flex;align-items:flex-end;justify-content:space-between;}
+  .kpi-value{font-size:24px;font-weight:700;color:var(--navy-800);}
 
-const FORECAST_ROUTE = [
-  { periodo: "-6d", historico: 15200, atual: null, previsto: null },
-  { periodo: "-5d", historico: 15800, atual: null, previsto: null },
-  { periodo: "-4d", historico: 16400, atual: null, previsto: null },
-  { periodo: "-3d", historico: 17100, atual: null, previsto: null },
-  { periodo: "-2d", historico: 17600, atual: null, previsto: null },
-  { periodo: "-1d", historico: 18000, atual: null, previsto: null },
-  { periodo: "Hoje", historico: null, atual: 18400, previsto: 18400 },
-  { periodo: "+1d", historico: null, atual: null, previsto: 23100 },
-];
+  .metric{background:#F8FAFC;border-radius:8px;padding:9px 12px;}
+  .metric-label{font-size:10.5px;color:#94A3B8;}
+  .metric-value{font-weight:700;color:var(--navy-800);}
 
-const INITIAL_RECOMENDACOES = [
-  {
-    id: "001", prioridade: "Alta",
-    titulo: "Redistribuir carga do Centro de Tratamento Curitiba",
-    problema: "O centro deve atingir 98% de ocupação nas próximas 8 horas.",
-    acao: "Transferir 3.200 encomendas para o centro de São Paulo utilizando a rota alternativa.",
-    impacto: { congestionamento: 31, risco: 18, custo: 8450, protegidas: 2700 },
-    status: "pendente",
-  },
-  {
-    id: "002", prioridade: "Média",
-    titulo: "Antecipar saída do veículo TR-2048 em 40 minutos",
-    problema: "A rota Curitiba → São Paulo apresenta aumento previsto de 14% no volume.",
-    acao: "Antecipar horário de saída para reduzir concentração de carga no pico das 18h.",
-    impacto: { congestionamento: 9, risco: 12, custo: 0, protegidas: 320 },
-    status: "pendente",
-  },
-  {
-    id: "003", prioridade: "Média",
-    titulo: "Reforçar triagem no Centro de São Paulo",
-    problema: "Aumento de 22% no volume previsto para amanhã eleva o risco de fila acima da capacidade de triagem.",
-    acao: "Alocar equipe extra no turno da tarde e abrir 2 esteiras adicionais.",
-    impacto: { congestionamento: 15, risco: 14, custo: 5200, protegidas: 1900 },
-    status: "pendente",
-  },
-];
+  table{width:100%;border-collapse:collapse;font-size:14px;}
+  thead tr{background:#F8FAFC;color:#64748B;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;}
+  th{text-align:left;padding:10px 14px;font-weight:600;}
+  td{padding:12px 14px;border-top:1px solid #F1F5F9;}
+  tbody tr:hover{background:#F8FAFC;cursor:pointer;}
+  .table-head-row{padding:16px 20px;border-bottom:1px solid #F1F5F9;display:flex;justify-content:space-between;align-items:center;}
 
-const ALERTAS = [
-  { nivel: "critico", titulo: "Centro de Tratamento Curitiba", texto: "Risco de congestionamento em 8 horas. Volume previsto: 14.200 encomendas. Capacidade estimada: 10.000.", risco: 87, recId: "001" },
-  { nivel: "atencao", titulo: "Rota Curitiba → São Paulo", texto: "Ocupação prevista acima de 95%. Recomendação disponível.", recId: "002" },
-  { nivel: "atencao", titulo: "Centro de Tratamento São Paulo", texto: "Aumento de 22% no volume previsto para amanhã.", recId: "003" },
-];
+  .btn{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:8px;font-size:13.5px;font-weight:700;transition:background .15s;}
+  .btn-primary{background:var(--azul);color:#fff;} .btn-primary:hover{background:var(--azul-hover);}
+  .btn-outline{background:#fff;border:1px solid #E2E8F0;color:var(--navy-800);} .btn-outline:hover{background:#F8FAFC;}
+  .btn-ghost{color:#94A3B8;} .btn-ghost:hover{color:#475569;}
+  .btn-block{width:100%;justify-content:center;}
 
-const NAV_ITEMS = [
-  { key: "visao", label: "Visão Geral", icon: LayoutDashboard },
-  { key: "mapa", label: "Mapa Logístico", icon: MapIcon },
-  { key: "gargalos", label: "Gargalos", icon: AlertTriangle },
-  { key: "transportes", label: "Transportes", icon: Truck },
-  { key: "centros", label: "Centros de Tratamento", icon: Warehouse },
-  { key: "previsao", label: "Previsão de Demanda", icon: TrendingUp },
-  { key: "recomendacoes", label: "Recomendações", icon: Sparkles },
-  { key: "relatorios", label: "Relatórios", icon: FileBarChart },
-];
+  .filter-bar{display:flex;flex-wrap:wrap;gap:14px;align-items:center;}
+  .filter-label{display:flex;align-items:center;gap:8px;font-size:12px;}
+  .filter-label span{color:#64748B;font-weight:600;}
+  .filter-label select{border:1px solid #E2E8F0;border-radius:8px;padding:6px 10px;font-size:12px;color:#334155;background:#fff;}
 
-/* =============================================================== HELPERS */
+  /* map */
+  .map-wrap{position:relative;height:520px;border-radius:8px;overflow:hidden;border:1px solid #E2E8F0;
+    background:radial-gradient(circle at 30% 20%,#0F3054 0%,#071B33 70%);
+    background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);
+    background-size:24px 24px,24px 24px;
+  }
+  .map-svg{position:absolute;inset:0;width:100%;height:100%;}
+  .map-label{
+    position:absolute;transform:translate(-50%,calc(-100% - 6px));font-family:'IBM Plex Mono';font-size:10.5px;font-weight:600;
+    color:rgba(255,255,255,.9);background:rgba(0,0,0,.3);padding:2px 6px;border-radius:5px;white-space:nowrap;backdrop-filter:blur(2px);
+  }
+  .map-label:hover{background:rgba(0,0,0,.6);}
+  .map-legend{position:absolute;bottom:12px;left:12px;display:flex;gap:12px;font-family:'IBM Plex Mono';font-size:11px;color:rgba(255,255,255,.8);background:rgba(0,0,0,.3);padding:6px 12px;border-radius:6px;}
+  .map-legend span{display:flex;align-items:center;gap:5px;}
+  .leg-dot{width:8px;height:8px;border-radius:999px;}
 
-const fmt = (n) => n.toLocaleString("pt-BR");
-const fmtR$ = (n) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
-const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+  .center-empty{height:100%;min-height:400px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#94A3B8;gap:8px;padding:40px 0;}
 
-function riscoColor(risco) {
-  if (risco === "Alto") return { text: "text-[#C0342A]", bg: "bg-[#C0342A]", soft: "bg-[#FBEAE8]", border: "border-[#C0342A]" };
-  if (risco === "Médio") return { text: "text-[#B4790E]", bg: "bg-[#C88A12]", soft: "bg-[#FBF1DD]", border: "border-[#C88A12]" };
-  return { text: "text-[#17924F]", bg: "bg-[#17924F]", soft: "bg-[#E7F5ED]", border: "border-[#17924F]" };
-}
+  /* recommendation cards */
+  .rec-card.applied,.rec-card.ignored{opacity:.6;}
+  .rec-flags{display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;}
+  .rec-id{font-family:'IBM Plex Mono';font-size:11px;font-weight:700;color:#94A3B8;}
+  .rec-priority{font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:4px;}
+  .rec-body{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:10px;font-size:13.5px;}
+  @media(max-width:700px){.rec-body{grid-template-columns:1fr;}}
+  .rec-body h4{font-size:11px;font-weight:700;color:#94A3B8;text-transform:uppercase;margin:0 0 3px;}
+  .rec-body p{margin:0;color:#475569;}
+  .rec-impact{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px;}
+  @media(max-width:640px){.rec-impact{grid-template-columns:repeat(2,1fr);}}
+  .rec-actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;}
 
-function ocupacaoColor(oc) {
-  if (oc >= 90) return "#C0342A";
-  if (oc >= 70) return "#C88A12";
-  return "#17924F";
-}
+  .toast{position:fixed;bottom:24px;right:24px;z-index:50;background:var(--navy-800);color:#fff;padding:14px 20px;border-radius:10px;
+    box-shadow:0 10px 30px rgba(0,0,0,.25);display:flex;align-items:center;gap:10px;font-size:13.5px;font-weight:500;}
 
-function RiskBadge({ risco }) {
-  const c = riscoColor(risco);
-  return (
-    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-semibold font-ui ${c.soft} ${c.text}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${c.bg}`} />
-      {risco}
-    </span>
-  );
-}
+  /* simulador */
+  .field{display:block;margin-bottom:16px;}
+  .field-label-row{display:flex;justify-content:space-between;margin-bottom:5px;font-size:12px;}
+  .field-label-row span:first-child{color:#64748B;font-weight:500;}
+  .field-label-row span:last-child{font-family:'IBM Plex Mono';font-weight:700;color:var(--navy-800);}
+  input[type=range]{width:100%;accent-color:var(--azul);}
+  .field select{width:100%;margin-top:5px;border:1px solid #E2E8F0;border-radius:8px;padding:9px 10px;font-size:13.5px;color:#334155;}
+  .scenario-title{font-family:'IBM Plex Mono';font-size:11px;text-transform:uppercase;margin-bottom:12px;}
+  .result-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+  .result-row span:first-child{font-size:13.5px;color:#64748B;}
+  .result-row span:last-child{font-family:'IBM Plex Mono';font-weight:700;font-size:16px;}
+  .savings-card{background:var(--verde-soft);border:1px solid rgba(23,146,79,.25);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;}
+  .savings-card b{color:var(--navy-800);font-size:13.5px;}
+  .savings-card .val{font-family:'IBM Plex Mono';font-size:20px;font-weight:700;color:var(--verde);}
 
-function StatusBadge({ status }) {
-  const map = {
-    Normal: { text: "text-[#17924F]", soft: "bg-[#E7F5ED]" },
-    Atenção: { text: "text-[#B4790E]", soft: "bg-[#FBF1DD]" },
-    Crítico: { text: "text-[#C0342A]", soft: "bg-[#FBEAE8]" },
-  };
-  const c = map[status] || map.Normal;
-  return <span className={`px-2 py-0.5 rounded text-xs font-semibold font-ui ${c.soft} ${c.text}`}>{status}</span>;
-}
+  /* centros grid */
+  .centro-card{cursor:pointer;transition:box-shadow .15s;}
+  .centro-card:hover{box-shadow:0 4px 14px rgba(15,23,42,.08);}
+  .centro-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+  .centro-uf{font-family:'IBM Plex Mono';font-size:11px;text-transform:uppercase;color:#94A3B8;}
+  .centro-name{font-weight:700;color:var(--navy-800);}
+  .bar-track{width:100%;height:6px;background:#F1F5F9;border-radius:999px;overflow:hidden;margin-bottom:8px;}
+  .bar-fill{height:100%;border-radius:999px;}
+  .centro-stats{display:flex;justify-content:space-between;font-family:'IBM Plex Mono';font-size:12px;color:#64748B;}
 
-function Delta({ value, invert = false }) {
-  const up = value >= 0;
-  const good = invert ? !up : up;
-  return (
-    <span className={`inline-flex items-center gap-0.5 text-xs font-semibold font-data ${good ? "text-[#17924F]" : "text-[#C0342A]"}`}>
-      {up ? <ArrowUp size={12} /> : <ArrowDown size={12} />}
-      {Math.abs(value).toFixed(1)}%
-    </span>
-  );
-}
+  .causa-item{display:flex;align-items:flex-start;gap:10px;font-size:13.5px;color:#475569;margin-bottom:11px;}
+  .causa-num{font-family:'IBM Plex Mono';font-size:11px;font-weight:700;color:#fff;background:var(--navy-800);width:20px;height:20px;border-radius:999px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
 
-function Card({ children, className = "" }) {
-  return <div className={`bg-white rounded-lg border border-slate-200 shadow-sm ${className}`}>{children}</div>;
-}
+  .report-row{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-top:1px solid #F8FAFC;}
+  .report-row:hover{background:#F8FAFC;}
+  .report-left{display:flex;align-items:center;gap:12px;}
+  .report-icon{width:36px;height:36px;border-radius:8px;background:#EAF1FA;color:var(--azul);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .report-name{font-weight:600;font-size:13.5px;color:var(--navy-800);}
+  .report-period{font-size:11px;color:#94A3B8;font-family:'IBM Plex Mono';}
+  .report-type{font-size:11px;font-weight:700;color:#94A3B8;border:1px solid #E2E8F0;border-radius:6px;padding:3px 8px;font-family:'IBM Plex Mono';}
 
-function SectionTitle({ eyebrow, title, action }) {
-  return (
-    <div className="flex items-end justify-between mb-4">
-      <div>
-        {eyebrow && <div className="font-data text-[11px] tracking-widest uppercase text-[#4C8DD9] mb-1">{eyebrow}</div>}
-        <h2 className="font-ui text-lg font-bold text-[#0C2A4D]">{title}</h2>
-      </div>
-      {action}
-    </div>
-  );
-}
+  .conf-bar{width:100%;background:#F1F5F9;border-radius:999px;height:8px;}
+  .conf-fill{height:100%;border-radius:999px;background:var(--verde);}
 
-/* ================================================================ LAYOUT */
+  .factors-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px;}
+  .factors-list li{display:flex;align-items:center;gap:9px;font-size:13.5px;color:#475569;}
+  .factors-list li::before{content:'';width:6px;height:6px;border-radius:999px;background:var(--azul);flex-shrink:0;}
 
-function Sidebar({ active, onNavigate }) {
-  return (
-    <aside className="w-64 shrink-0 h-screen sticky top-0 flex flex-col text-white font-ui"
-      style={{ background: "linear-gradient(180deg,#071B33 0%,#0C2A4D 100%)" }}>
-      <div className="px-5 py-5 border-b border-white/10">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-md bg-[#1B5FAE] flex items-center justify-center shrink-0">
-            <Radio size={18} className="text-white" />
-          </div>
-          <div className="leading-tight">
-            <div className="font-bold text-[15px]">Correios</div>
-            <div className="text-[13px] text-[#8FB4E0] tracking-wide">LogiSense</div>
-          </div>
-        </div>
-      </div>
-      <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto">
-        {NAV_ITEMS.map((item) => {
-          const Icon = item.icon;
-          const isActive = active === item.key;
-          return (
-            <button
-              key={item.key}
-              onClick={() => onNavigate(item.key)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-[13.5px] font-medium transition-colors
-                ${isActive ? "bg-[#1B5FAE] text-white" : "text-[#B8CCE3] hover:bg-white/5 hover:text-white"}`}
-            >
-              <Icon size={17} className="shrink-0" />
-              <span className="text-left">{item.label}</span>
-              {isActive && <ChevronRight size={14} className="ml-auto opacity-70" />}
-            </button>
-          );
-        })}
-      </nav>
-      <div className="px-4 py-4 border-t border-white/10 text-[11px] text-[#6E8BAE] font-data leading-relaxed">
-        Protótipo conceitual · dados 100% simulados<br />Sem integração com sistemas reais dos Correios
-      </div>
-    </aside>
-  );
-}
+  .horizonte-toggle{display:flex;gap:2px;background:#F1F5F9;border-radius:8px;padding:4px;}
+  .horizonte-toggle button{padding:6px 12px;border-radius:6px;font-size:12px;font-weight:700;color:#64748B;}
+  .horizonte-toggle button.active{background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.08);color:var(--navy-800);}
 
-function TopBar({ pageLabel, search, setSearch, onSearchSubmit, notifOpen, setNotifOpen, onOpenRec }) {
-  return (
-    <div className="sticky top-0 z-20 bg-white border-b border-slate-200 px-6 py-3 flex items-center gap-4 font-ui">
-      <div className="min-w-[180px]">
-        <div className="text-[11px] text-slate-400 font-data uppercase tracking-wide">Correios LogiSense</div>
-        <div className="text-[15px] font-bold text-[#0C2A4D]">{pageLabel}</div>
-      </div>
-      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#E7F5ED] text-[#17924F] text-xs font-semibold font-data">
-        <span className="relative flex h-2 w-2">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#17924F] opacity-60" />
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-[#17924F]" />
-        </span>
-        Operação atualizada há 2 min
-      </div>
+  .chart-box{position:relative;width:100%;}
+  .footnote{font-size:11.5px;color:#94A3B8;margin-top:6px;}
+</style>
+</head>
+<body>
+<div id="app"></div>
 
-      <div className="flex-1 max-w-md relative ml-4">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && onSearchSubmit()}
-          placeholder="Buscar centro, rota ou veículo..."
-          className="w-full pl-9 pr-3 py-2 rounded-md bg-slate-100 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-[#1B5FAE]/40 focus:bg-white border border-transparent focus:border-[#1B5FAE]/30"
-        />
-      </div>
-
-      <div className="ml-auto flex items-center gap-3 relative">
-        <button
-          onClick={() => setNotifOpen((v) => !v)}
-          className="relative w-9 h-9 rounded-md hover:bg-slate-100 flex items-center justify-center text-slate-500"
-        >
-          <Bell size={18} />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#C0342A]" />
-        </button>
-        {notifOpen && (
-          <div className="absolute right-24 top-11 w-80 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden">
-            <div className="px-4 py-2.5 border-b border-slate-100 text-xs font-bold text-slate-500 uppercase tracking-wide font-ui">Notificações</div>
-            {ALERTAS.map((a, i) => (
-              <button key={i} onClick={() => { onOpenRec(a.recId); setNotifOpen(false); }}
-                className="w-full text-left px-4 py-3 border-b border-slate-50 last:border-0 hover:bg-slate-50 flex gap-2.5">
-                <span className={`w-2 h-2 mt-1.5 rounded-full shrink-0 ${a.nivel === "critico" ? "bg-[#C0342A]" : "bg-[#C88A12]"}`} />
-                <div>
-                  <div className="text-[13px] font-semibold text-[#0C2A4D]">{a.titulo}</div>
-                  <div className="text-xs text-slate-500 mt-0.5 line-clamp-2">{a.texto}</div>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-        <div className="w-px h-6 bg-slate-200" />
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-[#1B5FAE] flex items-center justify-center text-white">
-            <User size={15} />
-          </div>
-          <div className="leading-tight hidden sm:block">
-            <div className="text-[13px] font-semibold text-[#0C2A4D]">Gestor Logístico</div>
-            <div className="text-[11px] text-slate-400">Perfil operacional</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ================================================================ KPI CARD */
-
-function KPICard({ icon: Icon, label, value, delta, invert, suffix = "" }) {
-  return (
-    <Card className="p-4 flex flex-col gap-2.5">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-slate-500 font-ui">{label}</span>
-        <Icon size={16} className="text-[#4C8DD9]" />
-      </div>
-      <div className="flex items-end justify-between">
-        <span className="font-data text-2xl font-bold text-[#0C2A4D]">{value}{suffix}</span>
-        {delta !== undefined && <Delta value={delta} invert={invert} />}
-      </div>
-    </Card>
-  );
-}
-
-/* ============================================================== DASHBOARD */
-
-function Dashboard({ goto, openCenter }) {
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
-        <KPICard icon={Package} label="Em processamento" value={fmt(184320)} delta={1.6} />
-        <KPICard icon={Truck} label="Em trânsito" value={fmt(96540)} delta={0.8} />
-        <KPICard icon={Gauge} label="Entregas no prazo" value="91,8" suffix="%" delta={2.4} />
-        <KPICard icon={AlertTriangle} label="Centros em risco" value="7" delta={-12.5} invert />
-        <KPICard icon={Truck} label="Veículos em operação" value={fmt(1284)} delta={0.4} />
-        <KPICard icon={Gauge} label="Ocupação média veículos" value="87" suffix="%" delta={1.1} />
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <Card className="p-5 xl:col-span-2">
-          <SectionTitle eyebrow="Série histórica · 30 dias" title="Entregas dentro do prazo" />
-          <ResponsiveContainer width="100%" height={230}>
-            <AreaChart data={DEMANDA_30D}>
-              <defs>
-                <linearGradient id="prazoFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#1B5FAE" stopOpacity={0.25} />
-                  <stop offset="100%" stopColor="#1B5FAE" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E7EBF1" vertical={false} />
-              <XAxis dataKey="dia" tick={{ fontSize: 10, fill: "#94A3B8" }} interval={4} axisLine={false} tickLine={false} />
-              <YAxis domain={[80, 100]} tick={{ fontSize: 10, fill: "#94A3B8" }} axisLine={false} tickLine={false} unit="%" width={38} />
-              <Tooltip formatter={(v) => [`${v}%`, "No prazo"]} contentStyle={{ fontFamily: "IBM Plex Mono", fontSize: 12, borderRadius: 8, border: "1px solid #E2E8F0" }} />
-              <Area type="monotone" dataKey="prazo" stroke="#1B5FAE" strokeWidth={2} fill="url(#prazoFill)" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </Card>
-
-        <Card className="p-5">
-          <SectionTitle eyebrow="Capacidade" title="Rede nacional" />
-          <ResponsiveContainer width="100%" height={230}>
-            <BarChart data={CAPACIDADE_REDE} barGap={6}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E7EBF1" vertical={false} />
-              <XAxis dataKey="categoria" tick={{ fontSize: 10, fill: "#94A3B8" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: "#94A3B8" }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v / 1000}k`} width={36} />
-              <Tooltip formatter={(v) => fmt(v)} contentStyle={{ fontFamily: "IBM Plex Mono", fontSize: 12, borderRadius: 8, border: "1px solid #E2E8F0" }} />
-              <Legend wrapperStyle={{ fontSize: 11, fontFamily: "Inter" }} />
-              <Bar dataKey="disponivel" name="Disponível" fill="#CBD9EA" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="utilizada" name="Utilizada" fill="#1B5FAE" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="projetada" name="Projetada" fill="#C88A12" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </Card>
-      </div>
-
-      <Card className="p-5">
-        <SectionTitle eyebrow="Monitoramento em tempo real" title="Alertas críticos" />
-        <div className="grid md:grid-cols-3 gap-4">
-          {ALERTAS.map((a, i) => {
-            const critico = a.nivel === "critico";
-            return (
-              <div key={i} className={`rounded-md border-l-4 ${critico ? "border-[#C0342A] bg-[#FBEAE8]/40" : "border-[#C88A12] bg-[#FBF1DD]/40"} border border-slate-200 p-4 flex flex-col gap-2`}>
-                <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${critico ? "bg-[#C0342A]" : "bg-[#C88A12]"}`} />
-                  <span className="font-ui font-bold text-sm text-[#0C2A4D]">{a.titulo}</span>
-                </div>
-                <p className="text-[13px] text-slate-600 leading-snug">{a.texto}</p>
-                {a.risco && <div className="font-data text-xs text-slate-500">Risco estimado: <span className="font-bold text-[#C0342A]">{a.risco}%</span></div>}
-                <button onClick={() => goto("recomendacoes", a.recId)}
-                  className="mt-1 self-start text-xs font-semibold text-[#1B5FAE] hover:underline flex items-center gap-1">
-                  Ver solução <ArrowRight size={12} />
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      </Card>
-    </div>
-  );
-}
-
-/* ============================================================ MAPA LOGÍSTICO */
-
-function MapaLogistico({ onOpenCenter, goto }) {
-  const [selected, setSelected] = useState(null);
-  const center = CENTERS.find((c) => c.id === selected);
-
-  return (
-    <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-      <Card className="p-5 xl:col-span-2">
-        <SectionTitle eyebrow="Malha nacional · tempo real" title="Mapa Logístico" />
-        <div className="relative rounded-md overflow-hidden border border-slate-200"
-          style={{
-            background: "radial-gradient(circle at 30% 20%, #0F3054 0%, #071B33 70%)",
-            height: 520,
-            backgroundImage:
-              "linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px)",
-            backgroundSize: "24px 24px",
-          }}
-        >
-          <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full">
-            {ROUTES.map(([a, b, vol], i) => {
-              const ca = CENTERS.find((c) => c.id === a);
-              const cb = CENTERS.find((c) => c.id === b);
-              const w = clamp(vol / 3500, 0.4, 3.2);
-              return (
-                <line key={i} x1={ca.x} y1={ca.y} x2={cb.x} y2={cb.y}
-                  stroke="#4C8DD9" strokeOpacity={0.45} strokeWidth={w / 4} />
-              );
-            })}
-            {CENTERS.map((c) => (
-              <g key={c.id} onClick={() => setSelected(c.id)} className="cursor-pointer">
-                <circle cx={c.x} cy={c.y} r={2.6} fill={ocupacaoColor(c.ocupacao)} fillOpacity={0.25}>
-                  <animate attributeName="r" values="2.6;4.2;2.6" dur="2.4s" repeatCount="indefinite" />
-                </circle>
-                <circle cx={c.x} cy={c.y} r={1.5} fill={ocupacaoColor(c.ocupacao)} stroke="#071B33" strokeWidth={0.3} />
-              </g>
-            ))}
-          </svg>
-          {CENTERS.map((c) => (
-            <button key={c.id} onClick={() => setSelected(c.id)}
-              style={{ left: `${c.x}%`, top: `${c.y}%` }}
-              className="absolute -translate-x-1/2 -translate-y-full mt-[-6px] text-[10.5px] font-data font-semibold text-white/90 bg-black/30 px-1.5 py-0.5 rounded backdrop-blur-sm whitespace-nowrap hover:bg-black/60 transition-colors">
-              {c.name}
-            </button>
-          ))}
-          <div className="absolute bottom-3 left-3 flex items-center gap-3 text-[11px] font-data text-white/80 bg-black/30 rounded px-3 py-1.5">
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#17924F]" />&lt;70%</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#C88A12]" />70–90%</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#C0342A]" />&gt;90%</span>
-          </div>
-        </div>
-      </Card>
-
-      <Card className="p-5">
-        {!center ? (
-          <div className="h-full flex flex-col items-center justify-center text-center text-slate-400 py-16 gap-2">
-            <MapPin size={26} />
-            <p className="text-sm font-ui">Selecione um centro no mapa<br />para ver detalhes operacionais.</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="font-data text-[11px] uppercase text-slate-400">{center.uf} · {center.regiao}</div>
-                <h3 className="font-ui font-bold text-lg text-[#0C2A4D]">{center.name}</h3>
-              </div>
-              <button onClick={() => setSelected(null)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
-            </div>
-            <RiskBadge risco={center.risco} />
-            <div className="grid grid-cols-2 gap-3 font-data text-sm">
-              <Metric label="Volume atual" value={fmt(center.volume)} />
-              <Metric label="Capacidade" value={fmt(center.capacidade)} />
-              <Metric label="Ocupação" value={`${center.ocupacao}%`} color={ocupacaoColor(center.ocupacao)} />
-              <Metric label="Recebidas/h" value={fmt(center.entradaHora)} />
-              <Metric label="Processadas/h" value={fmt(center.processHora)} />
-              <Metric label="Tempo médio" value={center.tempoMedio} />
-            </div>
-            <div className="pt-2 border-t border-slate-100">
-              <div className="text-xs text-slate-500 font-ui mb-1">Previsão para as próximas 24h</div>
-              <div className="text-sm font-data font-semibold text-[#0C2A4D]">{center.previsao} em relação a hoje</div>
-            </div>
-            <div className="flex flex-col gap-2 pt-2">
-              <button onClick={() => goto("simulador")}
-                className="w-full py-2 rounded-md bg-[#1B5FAE] text-white text-sm font-semibold font-ui hover:bg-[#164C8C] transition-colors flex items-center justify-center gap-2">
-                <SlidersHorizontal size={14} /> Simular redistribuição
-              </button>
-              <button onClick={() => onOpenCenter(center.id)}
-                className="w-full py-2 rounded-md border border-slate-200 text-[#0C2A4D] text-sm font-semibold font-ui hover:bg-slate-50 transition-colors">
-                Ver detalhes completos
-              </button>
-            </div>
-          </div>
-        )}
-      </Card>
-    </div>
-  );
-}
-
-function Metric({ label, value, color }) {
-  return (
-    <div className="bg-slate-50 rounded-md px-3 py-2">
-      <div className="text-[10.5px] font-ui text-slate-400">{label}</div>
-      <div className="font-bold" style={{ color: color || "#0C2A4D" }}>{value}</div>
-    </div>
-  );
-}
-
-/* =================================================================== GARGALOS */
-
-function Gargalos({ onOpenCenter }) {
-  const [regiao, setRegiao] = useState("Todas");
-  const [risco, setRisco] = useState("Todos");
-  const [tipo, setTipo] = useState("Todos");
-
-  const regioes = ["Todas", ...new Set(CENTERS.map((c) => c.regiao))];
-  const tipos = ["Todos", ...new Set(CENTERS.map((c) => c.tipoGargalo))];
-
-  const filtered = CENTERS.filter((c) =>
-    (regiao === "Todas" || c.regiao === regiao) &&
-    (risco === "Todos" || c.risco === risco) &&
-    (tipo === "Todos" || c.tipoGargalo === tipo)
-  ).sort((a, b) => b.ocupacao - a.ocupacao);
-
-  return (
-    <div className="space-y-6">
-      <Card className="p-4 flex flex-wrap gap-3 items-center">
-        <SelectFilter label="Região" value={regiao} onChange={setRegiao} options={regioes} />
-        <SelectFilter label="Nível de risco" value={risco} onChange={setRisco} options={["Todos", "Alto", "Médio", "Baixo"]} />
-        <SelectFilter label="Tipo de gargalo" value={tipo} onChange={setTipo} options={tipos} />
-        <SelectFilter label="Período" value="Próximas 24h" onChange={() => {}} options={["Próximas 24h", "Próximos 7 dias", "Próximos 30 dias"]} />
-      </Card>
-
-      <Card className="p-5">
-        <SectionTitle eyebrow={`${filtered.length} centro(s)`} title="Gargalos previstos nas próximas 24 horas" />
-        <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={filtered} layout="vertical" margin={{ left: 10 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#E7EBF1" horizontal={false} />
-            <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: "#94A3B8" }} unit="%" axisLine={false} tickLine={false} />
-            <YAxis type="category" dataKey="name" width={90} tick={{ fontSize: 11, fill: "#334155" }} axisLine={false} tickLine={false} />
-            <Tooltip formatter={(v) => [`${v}%`, "Ocupação"]} contentStyle={{ fontFamily: "IBM Plex Mono", fontSize: 12, borderRadius: 8, border: "1px solid #E2E8F0" }} />
-            <ReferenceLine x={90} stroke="#C0342A" strokeDasharray="4 4" />
-            <Bar dataKey="ocupacao" radius={[0, 4, 4, 0]}>
-              {filtered.map((c, i) => <Bar key={i} fill={ocupacaoColor(c.ocupacao)} />)}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </Card>
-
-      <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-100">
-          <h2 className="font-ui text-lg font-bold text-[#0C2A4D]">Detalhamento por centro</h2>
-        </div>
-        <table className="w-full text-sm font-ui">
-          <thead>
-            <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
-              <th className="text-left px-5 py-2.5 font-semibold">Centro</th>
-              <th className="text-left px-3 py-2.5 font-semibold">Ocupação</th>
-              <th className="text-left px-3 py-2.5 font-semibold">Volume</th>
-              <th className="text-left px-3 py-2.5 font-semibold">Capacidade</th>
-              <th className="text-left px-3 py-2.5 font-semibold">Risco</th>
-              <th className="text-left px-3 py-2.5 font-semibold">Previsão</th>
-              <th className="px-3 py-2.5" />
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((c) => (
-              <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50 cursor-pointer" onClick={() => onOpenCenter(c.id)}>
-                <td className="px-5 py-3 font-semibold text-[#0C2A4D]">{c.name} <span className="text-slate-400 font-normal">· {c.uf}</span></td>
-                <td className="px-3 py-3 font-data font-semibold" style={{ color: ocupacaoColor(c.ocupacao) }}>{c.ocupacao}%</td>
-                <td className="px-3 py-3 font-data">{fmt(c.volume)}</td>
-                <td className="px-3 py-3 font-data">{fmt(c.capacidade)}</td>
-                <td className="px-3 py-3"><RiskBadge risco={c.risco} /></td>
-                <td className="px-3 py-3 font-data text-slate-600">{c.previsao}</td>
-                <td className="px-3 py-3 text-slate-300"><ChevronRight size={16} /></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
-    </div>
-  );
-}
-
-function SelectFilter({ label, value, onChange, options }) {
-  return (
-    <label className="flex items-center gap-2 text-xs font-ui">
-      <span className="text-slate-500 font-medium">{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)}
-        className="border border-slate-200 rounded-md px-2.5 py-1.5 text-slate-700 bg-white outline-none focus:ring-2 focus:ring-[#1B5FAE]/30 text-xs">
-        {options.map((o) => <option key={o} value={o}>{o}</option>)}
-      </select>
-    </label>
-  );
-}
-
-/* ================================================================ TRANSPORTES */
-
-function Transportes() {
-  const ativos = VEHICLES_BASE.length + 1277;
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <KPICard icon={Truck} label="Veículos ativos" value={fmt(1284)} />
-        <KPICard icon={Truck} label="Disponíveis" value={fmt(142)} />
-        <KPICard icon={SlidersHorizontal} label="Em manutenção" value={fmt(38)} />
-        <KPICard icon={Gauge} label="Ocupação média" value="87" suffix="%" />
-        <KPICard icon={AlertTriangle} label="Rotas críticas" value="4" />
-      </div>
-      <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-          <h2 className="font-ui text-lg font-bold text-[#0C2A4D]">Frota em operação</h2>
-          <span className="text-xs text-slate-400 font-data">{VEHICLES_BASE.length} veículos monitorados</span>
-        </div>
-        <table className="w-full text-sm font-ui">
-          <thead>
-            <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
-              <th className="text-left px-5 py-2.5 font-semibold">Veículo</th>
-              <th className="text-left px-3 py-2.5 font-semibold">Origem</th>
-              <th className="text-left px-3 py-2.5 font-semibold">Destino</th>
-              <th className="text-left px-3 py-2.5 font-semibold">Ocupação</th>
-              <th className="text-left px-3 py-2.5 font-semibold">Saída</th>
-              <th className="text-left px-3 py-2.5 font-semibold">Chegada prevista</th>
-              <th className="text-left px-3 py-2.5 font-semibold">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {VEHICLES_BASE.map((v) => (
-              <tr key={v.id} className="border-t border-slate-100 hover:bg-slate-50">
-                <td className="px-5 py-3 font-data font-semibold text-[#0C2A4D]">{v.id}</td>
-                <td className="px-3 py-3">{v.origem}</td>
-                <td className="px-3 py-3">{v.destino}</td>
-                <td className="px-3 py-3 font-data font-semibold" style={{ color: ocupacaoColor(v.ocupacao) }}>{v.ocupacao}%</td>
-                <td className="px-3 py-3 font-data">{v.saida}</td>
-                <td className="px-3 py-3 font-data">{v.chegada}</td>
-                <td className="px-3 py-3"><StatusBadge status={v.status} /></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
-    </div>
-  );
-}
-
-/* =========================================================== CENTROS LISTA */
-
-function CentrosTratamento({ onOpenCenter }) {
-  return (
-    <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-      {CENTERS.map((c) => (
-        <Card key={c.id} className="p-4 cursor-pointer hover:shadow-md transition-shadow" >
-          <button onClick={() => onOpenCenter(c.id)} className="w-full text-left space-y-3">
-            <div className="flex items-start justify-between">
+<script>
+/* =============================================================== ICONS === */
+const ICONS = {
+  dashboard:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>',
+  map:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>',
+  alert:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+  truck:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>',
+  warehouse:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V10l9-6 9 6v11"/><path d="M9 21v-6h6v6"/></svg>',
+  trend:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',
+  sparkles:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.3L19 10l-5.1 1.7L12 17l-1.9-5.3L5 10l5.1-1.7L12 3z"/></svg>',
+  report:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/><line x1="9" y1="11" x2="12" y2="11"/></svg>',
+  search:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
+  bell:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
+  user:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+  chev:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>',
+  arrowUp:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>',
+  arrowDown:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>',
+  pin:'<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>',
+  x:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+  sliders:'<svg width="15" height="15" 
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
               <div>
                 <div className="font-data text-[11px] uppercase text-slate-400">{c.uf} · {c.regiao}</div>
                 <div className="font-ui font-bold text-[#0C2A4D]">{c.name}</div>
