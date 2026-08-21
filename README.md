@@ -1,1 +1,12 @@
-<img width="535" height="609" alt="image" src="https://github.com/user-attachments/assets/495a37eb-571f-4b10-ad6c-417438e978dd" />
+export default function Diferenciais (){
+    <section className='diferenciais' id='diferencias'>
+        <div className='cards'>
+            {listaDiferenciais.map((item) => (
+                <div className='card' key={item.id}>
+                    <img src={item.imagem} alt={item.alt} />
+                    <p>{item.texto}</p>
+                </div>
+            ))}
+        </div>
+    </section>
+}
